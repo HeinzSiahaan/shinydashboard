@@ -1,0 +1,14 @@
+name: capstone_dv
+title: capstone_dv
+username:
+account: heinzmdsiahaan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 8413328
+bundleId: 6901898
+url: https://heinzmdsiahaan.shinyapps.io/capstone_dv/
+when: 1677671250.93768
+lastSyncTime: 1677671250.93769
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: brief_template.Rmd|capstone_dv-1.zip|capstone_dv-20230226.zip|capstone_dv.zip|styles.css

@@ -1,0 +1,8 @@
+g.hovertext > path {
+  opacity: .6;
+}
+
+  #url<- a(href="https://www.kaggle.com/datasets/thedevastator/global-video-game-sales-ratings", "this link")
+  #output$tab <- renderUI({
+  #  tagList("URL link:", url)
+  #}) 

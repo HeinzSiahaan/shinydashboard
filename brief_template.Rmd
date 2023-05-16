@@ -1,0 +1,1015 @@
+---
+title: "Briefing DV capstone"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+ html_document:
+   toc: true
+   toc_float: true
+   highlight: zenburn
+   df_print: paged
+   theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+File ini berisi template untuk mejawab pertanyaan 5W+1H saat briefing Capstone Data Visualization sebagai langkah awal sebelum membuat Dashboard. Silakan Bapak/Ibu mengisi jawaban di bawah. 
+
+File ini tidak akan dinilai namun Bapak/Ibu **WAJIB** disubmit ke dalam classroom pada hari H briefing Capstone Data Visualization.
+
+# What
+
+Tentukan tujuan atau informasi yang ingin ditampilkan dalam dashboard
+
+Tentang Penjualan Video Games dengan datasource :https://www.kaggle.com/datasets/thedevastator/global-video-game-sales-ratings
+
+**Jawab**
+
+Tujuan yang ingin dicapai atau informasi yang ingin disampaikan:
+
+- mengetahui top 10 game global (game dengan penjualan tertinggi)
+- mengetahui top 10 platform yang memproduksi top game global
+- mengetahui top 10 publisher apa yang digunakan untuk top game global
+- mengetahui top 10 developer apa yang digunakan untuk top game global
+- mengetahui top 10 genre dari top game global
+
+# Who
+
+Untuk siapa dashboard ini dibuat? Siapa target pembaca dari dashboard ini?
+
+**Jawab**
+
+untuk orang yang ingin membeli atau memainkan games supaya mendapat insight games apa sedang laris dan kemungkinan akan dibeli.
+untuk publisher games agar mendapat insight games dengan genre apa yang akan laku dijual dan platform apa yang akan digunakan.
+
+
+# Why
+
+Apakah data yang dibuat relevan atau sesuai dengan tujuan? Mengapa?
+
+**Jawab**
+
+data yang digunakan merupakan data yang didapat per Februari 2023 sehingga masih sangat relevan untuk proyek ini
+
+# When
+
+Apakah data yang digunakan masih *up to date* atau masih relevan dengan kondisi sekarang? Apakah ada informasi tentang tanggal update terakhir dari data tersebut?
+
+**Jawab**
+
+Menurut situs https://www.kaggle.com/datasets/thedevastator/global-video-game-sales-ratings, datasource yang saya gunakan update pada tanggal 10 Februari 2023
+
+
+# How
+
+Bagaimana Bapak/Ibu menggunakan visualisasi untuk menjawab tujuan yang telah disebutkan? 
+
+Buat plot yang akan dimasukkan ke dalam dashboard. Boleh dalam bentuk `ggplot` maupun `plotly`.
+
+**Jawab**
+
+
+```{r}
+# preparation data
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(glue)
+library(plotly)
+library(lubridate)
+library(DT)
+options(scipen = 100)
+
+library(shiny)
+library(shinydashboard)
+
+```
+```{r}
+
+games.sales <- read.csv("data_input/salesgamesdata.csv", stringsAsFactors = TRUE, encoding = "latin1")
+match.row <- match(unique(games.sales$Name), games.sales$Name)
+games.sales.clean <- games.sales[match.row, ]
+
+games.sales.clean<-games.sales%>% 
+   mutate(
+      Name = as.character(Name),
+      )
+
+games.sales.clean=select(.data = games.sales.clean, -Critic_Score, -Critic_Count, -User_Score,-User_Count,-Developer,-Rating)
+head(games.sales.clean)
+```
+```{r}
+anyNA(games.sales.clean)
+```
+```{r}
+colSums(is.na(games.sales.clean))
+```
+```{r}
+games.sales.clean 
+```
+```{r}
+unique(games.sales.clean$Platform)
+```
+
+```{r}
+games.sales.clean %>% filter(Genre!="")
+```
+
+
+
+```{r}
+  games.sales.count.top.1 <- games.sales.clean %>%  
+      group_by(Name) %>%  
+      summarise(sum.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      arrange(-sum.Global) %>%
+      #gather("key", "value", - c(Name, n)) %>%
+      head(1) 
+
+top.publisher <- games.sales.clean  %>%
+      filter(Name %in% games.sales.count.top.1$Name)  
+top.publisher$Publisher
+```
+```{r}
+games.sales.count <- games.sales.clean %>%  
+   filter(Genre %in% c("Sports")) %>% 
+      group_by() %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),
+                sum.Sales.JP = sum(JP_Sales),
+                sum.Sales.EU = sum(EU_Sales),
+                sum.Sales.Others = sum(Other_Sales)) %>% 
+      ungroup()  
+
+games.sales.count
+```
+```{r}
+
+games.sales.count.NA <- games.sales.clean %>%   
+      group_by() %>%  
+      summarise(sum.Sales = sum(NA_Sales)) %>% 
+      ungroup()   %>%
+      mutate(
+        Country = "NA Sales",
+        label2 = glue("{sum.Sales}")
+      ) 
+    games.sales.count.EU <- games.sales.clean %>%   
+      group_by() %>%  
+      summarise(sum.Sales = sum(EU_Sales)) %>% 
+      ungroup()   %>%
+      mutate(
+        Country = "EU Sales",
+        label2 = glue("{sum.Sales}")
+      ) 
+    games.sales.count.JP <- games.sales.clean %>%   
+      group_by() %>%  
+      summarise(sum.Sales = sum(JP_Sales)) %>% 
+      ungroup()   %>%
+      mutate(
+        Country = "JP Sales",
+        label2 = glue("{sum.Sales}")
+      ) 
+    games.sales.count.Other <- games.sales.clean %>%   
+      group_by() %>%  
+      summarise(sum.Sales = sum(Other_Sales)) %>% 
+      ungroup()   %>%
+      mutate(
+        Country = "Other Sales",
+        label2 = glue("{sum.Sales}")
+      ) 
+    games.sales.count.All = rbind(games.sales.count.NA, games.sales.count.EU,games.sales.count.JP,games.sales.count.Other)
+    
+games.sales.count.All
+
+    plot2 <- plot_ly(games.sales.count.All, labels = ~Country, values = ~sum.Sales, type = 'pie')%>%
+      layout(title = 'Proportion of YouTube Categories')
+    
+    plot2
+
+```
+
+```{r}
+sales.country <- c("NA Sales","EU Sales","JP Sales","Other Sales")
+sales.Genre <-c("Sports","Racing")#unique(games.sales.clean$Genre)
+
+games.sales.count.top.10 <- games.sales.clean %>% 
+      filter(Genre %in% sales.Genre) %>% 
+      group_by(Name) %>%  
+      summarise(sum.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      arrange(-sum.Global) %>%
+      #gather("key", "value", - c(Name, n)) %>%
+      head(10)
+#games.sales.count.top.10
+
+games.sales.count.top.10.NA <- games.sales.clean %>%
+  filter(Name %in% games.sales.count.top.10$Name)%>%
+   group_by(Name) %>%  
+   summarise(sum.Sales = sum(NA_Sales)) %>% 
+   ungroup() %>% 
+   mutate(
+        Country = "NA Sales",
+        label = glue("{sum.Sales}")
+      )
+ #games.sales.count.top.10.NA                              
+
+ games.sales.count.top.10.EU <- games.sales.clean %>%
+  filter(Name %in% games.sales.count.top.10$Name)%>%
+   group_by(Name) %>%  
+   summarise(sum.Sales = sum(EU_Sales)) %>% 
+   ungroup() %>% 
+   mutate(
+        Country = "EU Sales",
+        label = glue("{sum.Sales}")
+      )
+ #games.sales.count.top.10.EU   
+ 
+  games.sales.count.top.10.JP <- games.sales.clean %>%
+  filter(Name %in% games.sales.count.top.10$Name)%>%
+   group_by(Name) %>%  
+   summarise(sum.Sales = sum(JP_Sales)) %>% 
+   ungroup() %>% 
+   mutate(
+        Country = "JP Sales",
+        label = glue("{sum.Sales}")
+      )
+ #games.sales.count.top.10.JP   
+ 
+  games.sales.count.top.10.Others <- games.sales.clean %>%
+  filter(Name %in% games.sales.count.top.10$Name)%>%
+   group_by(Name) %>%  
+   summarise(sum.Sales = sum(Other_Sales)) %>% 
+   ungroup() %>% 
+   mutate(
+        Country = "Others Sales",
+        label = glue("{sum.Sales}")
+      )
+ #games.sales.count.top.10.Others
+ 
+ games.sales.count.top.10.All = rbind(games.sales.count.top.10.NA, games.sales.count.top.10.EU,games.sales.count.top.10.JP,games.sales.count.top.10.Others)
+ games.sales.count.top.10.All
+ 
+plot1_bar <- ggplot(data = games.sales.count.top.10.All , mapping = aes(y = reorder(Name,
+                                                     sum.Sales), 
+                                         x =  sum.Sales, text=label)) + 
+  geom_col(mapping = aes(fill = Country))+
+  labs(title = "Top 10 Games With Highest Sales",
+           x = "Total Sales (in million copies)",
+           y = NULL) +
+      theme_minimal()+
+      theme(legend.position = "top")
+    
+    ggplotly(plot1_bar, tooltip = "text")
+```
+
+```{r}
+sales.country <- c("NA Sales","EU Sales","JP Sales","Other Sales")
+```
+
+```{r}
+games.sales.count <- games.sales.clean %>% 
+      group_by(Name) %>%  
+      summarise(n=n(),
+                sum.NA = sum(NA_Sales),
+                sum.EU = sum(EU_Sales),
+                sum.JP = sum(JP_Sales),
+                sum.Other = sum(Other_Sales),
+                sum.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      arrange(-sum.Global) %>%
+      #gather("key", "value", - c(Name, n)) %>%
+      head(10)
+
+games.sales.count
+```
+
+Plot untuk menjawab tujuan pertama
+```{r}
+# your code here
+library(plotly) 
+
+games.sales.count <- games.sales.count %>%  
+      arrange(-sum.Global) %>%
+      head(10)  
+
+ #colors = c("#EB455F", "#FCFFE7", "#BAD7E9", "#2B3467")
+games.sales.count$Name <- factor(games.sales.count$Name, levels = unique(games.sales.count$Name)[order(games.sales.count$sum.Global, decreasing = F)])
+
+   plot1 <- plot_ly(games.sales.count, y = ~Name, x = ~sum.NA, type = 'bar', name = '',  marker = list(color = "3C6255"),
+                    hovertemplate = paste0("%{x}") 
+                    )%>% 
+     add_trace(x = ~sum.EU, name = '', marker = list(color = "61876E"))%>% 
+     add_trace(x = ~sum.JP, name = '', marker = list(color = "A6BB8D"))%>% 
+     add_trace(x = ~sum.Other, name = '', marker = list(color = "EAE7B1"))%>% 
+     layout( 
+       barmode = 'stack')  %>% layout(showlegend = FALSE)
+ 
+plot1
+     
+```
+```{r}
+
+```
+
+```{r}
+#https://stackoverflow.com/questions/71622875/how-to-plot-a-stacked-bar-plot-from-multiple-columns
+library(tidyverse)
+
+games.sales.count %>%
+  select(-starts_with("sum.")) %>%
+  pivot_longer(-Name, names_to = "trait", values_to = "value") %>%
+  bind_cols(
+    .,
+    df %>% select(starts_with("sum.")) %>% pivot_longer(everything(), names_to = NULL, values_to = "Sum")
+  ) %>%
+  arrange(games.sales.count, desc(trait)) %>% 
+  group_by(games.sales.count) %>%
+  mutate(cumulative = cumsum(value)) %>%
+  ggplot(., aes(fill = trait, y = value, x = fruit)) +
+  geom_bar(position = "stack", stat = "identity") +
+  geom_label(aes(y = cumulative, label = paste(value, "\ub1", SE)), nudge_y = -1, size = 4,
+             label.size = 0, label.r = unit(0, "pt"), fill = NA)
+```
+
+
+Plot kedua
+```{r}
+# your code here
+
+   platform.sales.count <- games.sales.clean %>% 
+     
+      group_by(Platform) %>% 
+      summarise(total_sales = sum(Global_Sales)) %>% 
+      group_by(Platform) %>% 
+      arrange(-total_sales) %>%
+      head(10) %>%
+      mutate(
+          label = glue(
+            "Platform: {Platform}
+            Total Sales: {total_sales}"
+          )
+        ) 
+  
+  plot2 <- ggplot(data = platform.sales.count, aes(x = total_sales, 
+                                           y = reorder(Platform, total_sales),
+                                           text = label)) + 
+      geom_col(aes(fill = total_sales)) + 
+      labs( x = "Global Sales",
+           y = NULL) +
+      theme_minimal()  
+    
+ggplotly(plot2, tooltip = "text")
+```
+
+Plot ketiga
+```{r}
+# your code here
+publisher.sales.count <- games.sales.clean %>% 
+     
+      group_by(Publisher) %>% 
+      summarise(total_sales = sum(Global_Sales)) %>% 
+      group_by(Publisher) %>% 
+      arrange(-total_sales) %>%
+      head(10) %>%
+      mutate(
+          label = glue(
+            "Publisher: {Publisher}
+            Total Sales: {total_sales}"
+          )
+        ) 
+  
+  plot3 <- ggplot(data = publisher.sales.count, aes(x = total_sales, 
+                                           y = reorder(Publisher, total_sales),
+                                           text = label)) + 
+      geom_col(aes(fill = total_sales)) + 
+      labs( x = "Global Sales",
+           y = NULL) +
+      theme_minimal()  
+    
+ggplotly(plot3, tooltip = "text")
+
+```
+
+Buat chunk baru apabila ada lebih dari 3 plot.
+```{r}
+
+developer.sales.count <- games.sales.clean %>% 
+      filter(Developer != "") %>% 
+      group_by(Developer) %>% 
+      summarise(total_sales = sum(Global_Sales)) %>% 
+      group_by(Developer) %>% 
+      arrange(-total_sales) %>%
+      head(10) %>%
+      mutate(
+          label = glue(
+            "Developer: {Developer}
+            Total Sales: {total_sales}"
+          )
+        ) 
+  
+  plot4 <- ggplot(data = developer.sales.count, aes(x = total_sales, 
+                                           y = reorder(Developer, total_sales),
+                                           text = label)) + 
+      geom_col(aes(fill = total_sales)) + 
+      labs( x = "Global Sales",
+           y = NULL) +
+      theme_minimal()  
+    
+ggplotly(plot4, tooltip = "text")
+```
+```{r}
+genre.sales.count <- games.sales.clean %>% 
+      filter(Genre != "") %>% 
+      group_by(Genre) %>% 
+      summarise(total_sales = sum(Global_Sales)) %>% 
+      group_by(Genre) %>% 
+      arrange(-total_sales) %>%
+      head(10) %>%
+      mutate(
+          label = glue(
+            "Genre: {Genre}
+            Total Sales: {total_sales}"
+          )
+        ) 
+  
+  plot5 <- ggplot(data = genre.sales.count, aes(x = total_sales, 
+                                           y = reorder(Genre, total_sales),
+                                           text = label)) + 
+      geom_col(aes(fill = total_sales)) + 
+      labs( x = "Global Sales",
+           y = NULL) +
+      theme_minimal()  
+    
+ggplotly(plot5, tooltip = "text")
+```
+
+# Where
+
+Bagaimana desain layout atau tata letak dashboard yang akan dibuat?
+
+**Jawab**
+
+Contoh penulisan layout. 
+
+Tab atau halaman pertama
+
+- baris 1 : top 1 game, top 1 platform, top 1 publisher  
+- baris 2 : top 1 developer, top 1 game
+- baris 3 : top 10 games global
+-
+
+Tab atau halaman kedua
+
+- baris 1 : 
+          kolom 1 : berupa inputan slider (menunjukkan top berapa), radio button (asc dan desc), select multiple (genre)
+          kolom 2 : berupa plot terkait dengan trend total sales
+- 
+-
+
+Tab atau halaman ketiga
+
+- baris 1 : berisi pie chart dengan tampilan komposisi sesuai dengan inputan
+
+Tab atau halaman keempat
+
+- baris 1 : about me, dataset source dan tampilan dataset
+
+
+
+```{r}
+
+games.sales.clean<-games.sales.clean%>% 
+  filter(Genre!="",Year_of_Release!="N/A",Year_of_Release!="-")
+
+ year.sales$Year_of_Release  <- droplevels( year.sales$Year_of_Release )
+  
+ year.sales <- games.sales.clean %>%  
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Global = sum(Global_Sales))  %>%
+      ungroup()      %>% 
+      mutate(
+        Year_of_Release=as.integer(Year_of_Release),
+        group = "Global",
+        label2 = glue( "Year : {Year_of_Release}
+      Total Sales: {sum.Global} millions copies"
+        )
+      )
+
+ 
+      # Visualization
+    plot3 <- ggplot(year.sales, aes(x=Year_of_Release, y= sum.Global))+
+      geom_line(col="red") +
+      geom_point(aes(text=label2), col="black") +
+      scale_y_continuous(labels = comma) +
+      scale_x_continuous() +
+      labs(
+        title = "",
+        x = "",
+        y = ""
+      ) +
+      theme_minimal()
+    
+    ggplotly(plot3, tooltip = "text")
+
+   
+```
+
+```{r}
+# read data
+games.sales <- read.csv("data_input/salesgamesdata.csv", stringsAsFactors = FALSE, encoding = "latin1")
+
+# cleansing data 
+match.row <- match(unique(games.sales$Name), games.sales$Name)
+games.sales.clean <- games.sales[match.row, ]
+
+games.sales.clean<-games.sales%>% 
+  filter(Genre!="",Year_of_Release!="N/A",Global_Sales > 0.1)%>%
+  mutate(
+    Name = as.character(Name),
+    Platform = as.factor(Platform),
+    Genre = as.factor(Genre),
+    Publisher = as.factor(Publisher),
+    Year_of_Release = as.numeric(Year_of_Release)
+  )
+
+games.sales.clean=select(.data = games.sales.clean, -Critic_Score, -Critic_Count, -User_Score,-User_Count,-Developer,-Rating)
+```
+
+```{r width=12}
+games.sales.count.NA <- games.sales.clean %>%
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "NA Sales",
+        label2 = glue("{Year_of_Release} : {sum.Sales.NA} millions copies")
+      )                              
+    
+    games.sales.count.EU <- games.sales.clean %>%
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "EU Sales",
+        label2 =   glue("{Year_of_Release} : {sum.Sales.EU} millions copies")
+      )  
+    
+    games.sales.count.JP <- games.sales.clean %>%
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "JP Sales",
+       label2 = glue("{Year_of_Release} : {sum.Sales.JP} millions copies")
+      ) 
+    
+    games.sales.count.Others <- games.sales.clean %>% 
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "Other Sales",
+        label2 = glue("{Year_of_Release} : {sum.Sales.Other} millions copies")
+      ) 
+    
+    games.sales.count.Global <- games.sales.clean %>% 
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "Global Sales",
+       label2 = glue("{Year_of_Release} : {sum.Sales.Global} millions copies")
+      ) 
+ 
+    games.sales.count.All = rbind( games.sales.count.EU, games.sales.count.Others,games.sales.count.JP,games.sales.count.NA,games.sales.count.Global)
+  games.sales.count.All %>% 
+    mutate(
+       Country=as.factor(Country)
+    )
+                     
+    
+   
+  plot4<-  ggplot(games.sales.count.All,mapping = aes(x=Year_of_Release))+ 
+                    geom_line(mapping=aes(y=sum.Sales.NA, color="NA Sales"))+
+                    geom_point(mapping=aes(y=sum.Sales.NA, color="NA Sales", text=label2))+ 
+                    geom_line(mapping=aes(y=sum.Sales.EU, color="EU Sales"))+
+                    geom_point(mapping=aes(y=sum.Sales.EU, color="EU Sales", text=label2))+ 
+                    geom_line(mapping=aes(y=sum.Sales.JP, color="JP Sales"))+
+                    geom_point(mapping=aes(y=sum.Sales.JP, color="JP Sales", text=label2))+ 
+                    geom_line(mapping=aes(y=sum.Sales.Other, color="Other Sales"))+
+                    geom_point(mapping=aes(y=sum.Sales.Other, color="Other Sales", text=label2))+ 
+                    geom_line(mapping=aes(y=sum.Sales.Global, color="Global Sales"))+
+                    geom_point(mapping=aes(y=sum.Sales.Global, color="Global Sales", text=label2))+theme_minimal()
+    
+    ggplotly(plot4, tooltip = "text")
+```
+```{r}
+time <- as.numeric(rep(seq(1,7),each=7))  # x Axis
+value <- runif(49, 10, 100)               # y Axis
+group <- rep(LETTERS[1:7],times=7)        # group, one shape per group
+data <- data.frame(time, value, group)
+
+# stacked area chart
+ggplot(data, aes(x=time, y=value, fill=group)) + 
+    geom_area()
+
+
+data("longley")
+```
+
+```{r}
+library(ggplot2)
+library(hrbrthemes)
+
+# create data
+xValue <- 1:10
+yValue <- abs(cumsum(rnorm(10)))
+data <- data.frame(xValue,yValue)
+
+# Plot
+ggplot(data, aes(x=xValue, y=yValue)) +
+  geom_area( fill="#69b3a2", alpha=0.4) +
+  geom_line(color="#69b3a2", size=2) +
+  geom_point(size=3, color="#69b3a2") +
+  #theme_ipsum() +
+  ggtitle("Evolution of something")
+```
+
+
+```{r}
+# import library
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(glue)
+library(plotly)
+library(lubridate)
+library(DT)
+library(stringr)
+library(tidyverse)
+options(scipen = 100)
+
+library(shiny)
+library(shinyWidgets)
+library(shinydashboard)
+
+# read data
+games.sales <- read.csv("data_input/salesgamesdata.csv", stringsAsFactors = FALSE, encoding = "latin1")
+
+# cleansing data 
+match.row <- match(unique(games.sales$Name), games.sales$Name)
+games.sales.clean <- games.sales[match.row, ]
+
+games.sales.clean<-games.sales%>% 
+  filter(Genre!="",Year_of_Release!="N/A",Global_Sales > 0.1)%>%
+  mutate(
+    Name = as.character(Name),
+    Platform = as.factor(Platform),
+    Genre = as.factor(Genre),
+    Publisher = as.factor(Publisher),
+    Year_of_Release = as.numeric(Year_of_Release)
+  )
+
+games.sales.clean=select(.data = games.sales.clean, -Critic_Score, -Critic_Count, -User_Score,-User_Count,-Developer,-Rating)
+
+games.sales.clean.option <- games.sales.clean %>%
+  mutate( 
+    Platform = as.character(Platform),
+    Genre = as.character(Genre),
+    Publisher = as.character(Publisher),
+    Year_of_Release = as.numeric(Year_of_Release)
+  )
+
+
+
+```
+
+
+
+```{r}
+ # Data Wrangling
+    games.sales.count.top.10 <- games.sales.clean %>% 
+      filter(Genre %in% c("Sports")) %>% 
+      group_by(Name) %>%  
+      summarise(sum.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      arrange(-sum.Global) %>%
+      #gather("key", "value", - c(Name, n)) %>%
+      head(10) 
+    
+    games.sales.count.top.10.NA <- games.sales.clean %>%
+      filter(Name %in% games.sales.count.top.10$Name)%>%
+      group_by(Name) %>%  
+      summarise(sum.Sales = sum(NA_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Region = "NA Sales",
+        label2 = glue("Name : {Name}
+                      NA Sales : {sum.Sales} million copies")
+      )                              
+    
+    games.sales.count.top.10.EU <- games.sales.clean %>%
+      filter(Name %in% games.sales.count.top.10$Name)%>%
+      group_by(Name) %>%  
+      summarise(sum.Sales = sum(EU_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Region = "EU Sales",
+        label2 = glue("Name : {Name}
+                      EU Sales : {sum.Sales} million copies")
+      )  
+    
+    games.sales.count.top.10.JP <- games.sales.clean %>%
+      filter(Name %in% games.sales.count.top.10$Name)%>%
+      group_by(Name) %>%  
+      summarise(sum.Sales = sum(JP_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Region = "JP Sales",
+        label2 = glue("Name : {Name}
+                      JP Sales : {sum.Sales} million copies")
+      ) 
+    
+    games.sales.count.top.10.Others <- games.sales.clean %>%
+      filter(Name %in% games.sales.count.top.10$Name)%>%
+      group_by(Name) %>%  
+      summarise(sum.Sales = sum(Other_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Region = "Other Sales",
+        label2 = glue("Name : {Name}
+                      Other Sales : {sum.Sales} million copies")
+      ) 
+    
+    games.sales.count.top.10.All = rbind( games.sales.count.top.10.EU, games.sales.count.top.10.Others,games.sales.count.top.10.JP,games.sales.count.top.10.NA
+                                        )
+  
+    
+    #Data Visualization 
+    games.sales.count.top.10.All$Region <- factor(games.sales.count.top.10.All$Region, levels = c("NA Sales","EU Sales","JP Sales","Other Sales"))
+    plot1_bar <- ggplot(data = games.sales.count.top.10.All , mapping = aes(y = reorder(Name,
+                                                                                        sum.Sales), 
+                                                                            x =  sum.Sales, text=label2)) + 
+      geom_col(mapping = aes(fill = Region),position = position_stack(reverse = TRUE)) + 
+      scale_fill_manual(values = c( "#82AAE3","#91D8E4","#EAFDFC", "#BFEAF5"))+
+      theme_minimal()+
+      theme(legend.position = "top",legend.title = element_blank())+
+      labs( 
+           x = "Total Sales (in million copies)",
+           y = NULL) 
+    
+    plot1_bar
+    
+```
+
+
+
+```{r}
+library(tidyverse)
+library(rgdal)
+library(RColorBrewer)
+library(tmap)
+library(leaflet)
+data(Europe)
+tm_shape(Europe) +
+  tm_fill("pop_est_dens", id="name", title="Population Density") +
+  tm_borders("grey20") + tm_text("iso_a3", size = 0.5) + tm_layout(legend.bg.color = "white")
+```
+```{r}
+library(sp)
+spplot(games.sales.count.top.10.All,"CO2",main=paste("CO2 Emissions - Year:",games.sales.count.top.10.All.Region),sub="Metric Tons per capita")
+```
+
+```{r}
+mypalettevggs <- colorBin( palette="YlOrRd", domain = games.sales.clean$Global_Sales)
+
+
+ leaflet(games.sales.clean)  %>% #creates base map
+      addTiles()  %>% 
+      setView( lat=10, lng=0 , zoom=2) %>% #sets default map pan
+  addPolygons( #code for happiness map
+        fillColor = ~mypalettevggs(Global_Sales), 
+        stroke=TRUE, 
+        fillOpacity = 0.9, 
+        color="white", 
+        weight=0.7,
+        label = mytext,
+        labelOptions = label,
+        highlightOptions = highlight,
+        group = "World Happiness Index" #group indicates which toggle pane it belongs to
+      ) 
+```
+
+
+
+```{r}
+library(maps)
+library(ggplot2)
+world_data <- ggplot2::map_data('world')
+world_data <- fortify(world_data)
+head(world_data,100) 
+```
+```{r}
+ 
+    
+    games.sales.count.top.10.NA <- games.sales.clean %>% 
+      group_by() %>%  
+      summarise(sum.Sales = sum(NA_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Region = "NA Sales",
+        label2 = glue("NA Sales : {sum.Sales} million copies")
+      )                              
+    
+    games.sales.count.top.10.EU <- games.sales.clean %>% 
+      group_by() %>%  
+      summarise(sum.Sales = sum(EU_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Region = "EU Sales",
+        label2 = glue("EU Sales : {sum.Sales} million copies")
+      )  
+    
+    games.sales.count.top.10.JP <- games.sales.clean %>% 
+      group_by() %>%  
+      summarise(sum.Sales = sum(JP_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Region = "JP Sales",
+        label2 = glue("JP Sales : {sum.Sales} million copies")
+      ) 
+    
+    games.sales.count.top.10.Others <- games.sales.clean %>% 
+      group_by() %>%  
+      summarise(sum.Sales = sum(Other_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Region = "Other Sales",
+        label2 = glue("Other Sales : {sum.Sales} million copies")
+      ) 
+    
+    games.sales.count.All = rbind( games.sales.count.top.10.EU, games.sales.count.top.10.Others,games.sales.count.top.10.JP,games.sales.count.top.10.NA
+                                        )
+    
+    
+    
+  
+```
+
+```{r}
+library(RColorBrewer)
+  library(ggiraph)
+library(reshape2)
+
+  world_data['grouped'] <- ifelse((world_data$region=="Canada" | world_data$region=="USA"),"NA Sales" ,
+                                        ifelse(world_data$region=="Japan","JP Sales", 
+  ifelse((world_data$region=="Portugal" | world_data$region=="Spain" | world_data$region=="France"|
+         world_data$region=="UK" | world_data$region=="Italy" | world_data$region=="Ireland"|
+         world_data$region=="Iceland" | world_data$region=="Germany" | world_data$region=="Belgium"|
+         world_data$region=="Austria" | world_data$region=="Slovenia" | world_data$region=="Croatia"|
+         world_data$region=="Bosnia and Herzegovina" | world_data$region=="Czech Republic" | world_data$region=="Moldova"|
+         world_data$region=="Ukraine" | world_data$region=="Belarus" | world_data$region=="Norway"|
+         world_data$region=="Sweden" | world_data$region=="Finland" | world_data$region=="Russia"|
+         world_data$region=="Azerbaijan" | world_data$region=="Romania" | world_data$region=="Bulgaria"|
+         world_data$region=="Greece" | world_data$region=="Albania" | world_data$region=="Moldova")
+         ,"EU Sales", "Other Sales")))
+                                
+   
+  world_data %>%
+    filter(world_data$region=="Japan")
+  
+    world_data['Value'] <- games.sales.count.All$sum.Sales[match(world_data$grouped, games.sales.count.All$Region)]
+  world_data['caption'] <- games.sales.count.All$label2[match(world_data$grouped, games.sales.count.All$Region)]
+  sort(unique(world_data$region))
+  
+ 
+  g <- ggplot() + 
+    geom_polygon_interactive(data = world_data, color = 'gray70', size = 0.1,
+                                    aes(x = long, y = lat, fill = Value, group = group)) + 
+    scale_fill_gradientn(colours = brewer.pal(5, "RdBu"), na.value = 'white') + 
+    scale_y_continuous(limits = c(-60, 90), breaks = c()) + 
+    scale_x_continuous(breaks = c()) #+ 
+    #labs(fill = grouped, color = grouped, title = NULL, x = NULL, y = NULL) 
+```
+
+```{r}
+# import library
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(glue)
+library(plotly)
+library(lubridate)
+library(DT)
+library(stringr)
+library(tidyverse)
+options(scipen = 100)
+
+library(shiny)
+library(shinyWidgets)
+library(shinydashboard)
+
+# read data
+games.sales <- read.csv("data_input/salesgamesdata.csv", stringsAsFactors = FALSE, encoding = "latin1")
+
+# cleansing data 
+match.row <- match(unique(games.sales$Name), games.sales$Name)
+games.sales.clean <- games.sales[match.row, ]
+
+games.sales.clean<-games.sales%>% 
+  filter(Genre!="",Year_of_Release!="N/A",Global_Sales > 0.1)%>%
+  mutate(
+    Name = as.character(Name),
+    Platform = as.factor(Platform),
+    Genre = as.factor(Genre),
+    Publisher = as.factor(Publisher),
+    Year_of_Release = as.numeric(Year_of_Release)
+  )
+
+games.sales.clean=select(.data = games.sales.clean, -Critic_Score, -Critic_Count, -User_Score,-User_Count,-Developer,-Rating)
+
+games.sales.clean.option=select(.data = games.sales.clean, Platform,Genre,Publisher,Year_of_Release)
+games.sales.clean.option <- games.sales.clean %>%
+  mutate( 
+    Platform = as.character(Platform),
+    Genre = as.character(Genre),
+    Publisher = as.character(Publisher),
+    Year_of_Release = as.numeric(Year_of_Release)
+  ) 
+
+
+
+ games.sales.count.NA <- games.sales.clean %>%
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "NA Sales",
+        label2 = glue("{Year_of_Release} : {sum.Sales.NA} million copies")
+      )                              
+    
+    games.sales.count.EU <- games.sales.clean %>%
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "EU Sales",
+        label2 =   glue("{Year_of_Release} : {sum.Sales.EU} million copies")
+      )  
+    
+    games.sales.count.JP <- games.sales.clean %>%
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "JP Sales",
+        label2 = glue("{Year_of_Release} : {sum.Sales.JP} million copies")
+      ) 
+    
+    games.sales.count.Others <- games.sales.clean %>% 
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "Other Sales",
+        label2 = glue("{Year_of_Release} : {sum.Sales.Other} million copies")
+      ) 
+    
+    games.sales.count.Global <- games.sales.clean %>% 
+      group_by(Year_of_Release) %>%  
+      summarise(sum.Sales.NA = sum(NA_Sales),sum.Sales.EU = sum(EU_Sales),sum.Sales.JP = sum(JP_Sales),sum.Sales.Other = sum(Other_Sales),sum.Sales.Global = sum(Global_Sales)) %>% 
+      ungroup() %>% 
+      mutate(
+        Country = "Global Sales",
+        label2 = glue("{Year_of_Release} : {sum.Sales.Global} million copies")
+      ) 
+    
+    games.sales.count.All = rbind( games.sales.count.EU, games.sales.count.Others,games.sales.count.JP,games.sales.count.NA,games.sales.count.Global)
+    games.sales.count.All %>% 
+      mutate(
+        Country=as.factor(Country)
+      ) 
+    
+    plot5<-  ggplot(games.sales.count.All,mapping = aes(x=Year_of_Release))+ 
+      geom_line(data=games.sales.count.NA,mapping=aes(y=sum.Sales.NA, color="NA Sales"))+
+      geom_point(data=games.sales.count.NA,mapping=aes(y=sum.Sales.NA, color="NA Sales", text=label2))+ 
+      geom_line(data=games.sales.count.EU,mapping=aes(y=sum.Sales.EU, color="EU Sales"))+
+      geom_point(data=games.sales.count.EU,mapping=aes(y=sum.Sales.EU, color="EU Sales", text=label2))+ 
+      geom_line(data=games.sales.count.JP,mapping=aes(y=sum.Sales.JP, color="JP Sales"))+
+      geom_point(data=games.sales.count.JP,mapping=aes(y=sum.Sales.JP, color="JP Sales", text=label2))+ 
+      geom_line(data=games.sales.count.Others,mapping=aes(y=sum.Sales.Other, color="Other Sales"))+
+      geom_point(data=games.sales.count.Others,mapping=aes(y=sum.Sales.Other, color="Other Sales", text=label2))+ 
+      geom_line(data=games.sales.count.Global,mapping=aes(y=sum.Sales.Global, color="Global Sales"))+
+      geom_point(data=games.sales.count.Global,mapping=aes(y=sum.Sales.Global, color="Global Sales", text=label2))+
+      labs(title = "Sales Trend",
+           x = "Year",
+           y = "", 
+           caption = "Source : kaggle.com") + 
+      theme(legend.position = "bottom")+
+      theme_minimal()+
+      theme(legend.position = "top", plot.title = element_text(hjust = 0.5))
+    
+    ggplotly(plot5, tooltip = "text")
+```
+
